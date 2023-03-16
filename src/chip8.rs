@@ -4,15 +4,19 @@ pub const SCREEN_HEIGHT: usize = 32;
 
 use display::Display;
 use keypad::Keypad;
+use sound::Oscillator;
 
 const START_ADDR: u16 = 0x200;
 const RAM_SIZE: usize = 4096;
 const NUM_REGS: usize = 16;
 const STACK_SIZE: usize = 16;
 const FONTSET_SIZE: usize = 80;
+const WAVE_TABLE_SIZE: usize = 64;
+const SAMPLE_RATE: f32 = 44100.0;
 
 mod display;
 mod keypad;
+mod sound;
 
 const FONTSET: [u8; FONTSET_SIZE] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -41,14 +45,21 @@ pub struct Chip8 {
     i_reg: u16,
     sp: u16,
     stack: [u16; STACK_SIZE],
-    // keys: [bool; NUM_KEYS],
     pub keys: Keypad,
+    osc: Oscillator,
     dt: u8,
     st: u8,
 }
 
 impl Chip8 {
     pub fn new() -> Self {
+        let mut wave_table: Vec<f32> = Vec::with_capacity(WAVE_TABLE_SIZE);
+        let frequency: f32 = 440.0;
+        for i in 0..WAVE_TABLE_SIZE {
+            wave_table.push((std::f32::consts::TAU * i as f32 / WAVE_TABLE_SIZE as f32).sin());
+        }
+
+
         let mut new_cpu = Self {
             pc: START_ADDR,
             ram: [0; RAM_SIZE],
@@ -58,6 +69,7 @@ impl Chip8 {
             sp: 0,
             stack: [0; STACK_SIZE],
             keys: Keypad::new(),
+            osc: Oscillator::new(SAMPLE_RATE, wave_table, frequency),
             dt: 0,
             st: 0,
         };
@@ -70,7 +82,6 @@ impl Chip8 {
     pub fn reset(&mut self) {
         self.pc = START_ADDR;
         self.ram = [0; RAM_SIZE];
-        // self.screen = [false; SCREEN_WIDTH * SCREEN_HEIGHT];
         self.screen.clear();
         self.v_reg = [0; NUM_REGS];
         self.i_reg = 0;
@@ -111,6 +122,7 @@ impl Chip8 {
         if self.st > 0 {
             if self.st == 1 {
                 // BEEP
+                self.osc.make_beep();
             }
             self.st -= 1;
         }
