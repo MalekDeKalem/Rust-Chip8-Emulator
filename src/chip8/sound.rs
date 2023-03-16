@@ -31,7 +31,7 @@ impl Oscillator {
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let new_osc = self.clone();
         let _result = stream_handle.play_raw(new_osc.convert_samples());
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
     
 
